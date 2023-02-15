@@ -1,0 +1,138 @@
+// Copyright (C) 2022 Intel Corporation
+// SPDX-License-Identifier: BSD-3-Clause
+/*BEGIN_LEGAL 
+BSD License 
+
+Copyright (c)2022 Intel Corporation. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+END_LEGAL */
+class BIMODAL
+{
+  public:
+    BIMODAL();
+    UINT64 References() { return _references;};
+    UINT64 Predicts() { return _predicts;};
+    UINT64 Icount() { return _icount;};
+    UINT64 Mispredicts() { return _references - _predicts;};
+    VOID Activate(ofstream *outfile)
+    {
+        _outfile = outfile;
+        INS_AddInstrumentFunction(Instruction, this);
+        PIN_AddFiniFunction(PrintStats, this);
+    }
+
+  private:
+    enum 
+    {
+        TABLESIZE = 4096
+    };
+
+    static VOID Instruction(INS ins, VOID *v);
+    static VOID CondBranch(VOID *v, VOID * v2,  BOOL taken);
+    static VOID Count(VOID *v);
+    static VOID PrintStats(int n, VOID *v);
+    static BOOL Predict(INT8 history);
+    static VOID Update(INT8 *history_ptr, BOOL outcome);
+    INT8 * HistAddress(INS ins);
+    UINT8 Index(ADDRINT pc);
+    ofstream *_outfile;
+
+    INT8 _branchHistory[TABLESIZE];
+    UINT64 _references, _predicts, _icount;
+};
+
+BIMODAL::BIMODAL()
+{
+    _references = 0;
+    _predicts = 0;
+    _icount = 0;
+    _outfile = NULL;
+}
+
+VOID BIMODAL::Instruction(INS ins, VOID *v)
+{
+    BIMODAL *bm = reinterpret_cast<BIMODAL*>(v);
+    INS_InsertCall(ins, IPOINT_BEFORE, // For counting the number of instructions
+           (AFUNPTR)Count, IARG_PTR, (VOID *)bm, IARG_END);
+    if (INS_IsBranch(ins) && INS_HasFallThrough(ins)) // If a conditional instruction
+        {
+            INS_InsertCall(ins, IPOINT_BEFORE, // Run the CondBranch function
+                           (AFUNPTR)CondBranch, IARG_PTR, (VOID *)bm, IARG_PTR, (VOID *)bm->HistAddress(ins), IARG_BRANCH_TAKEN, IARG_END);
+        }
+}
+
+UINT8 BIMODAL::Index(ADDRINT pc)
+{
+    return (pc % TABLESIZE); // Simple linear hashing
+}
+
+INT8 * BIMODAL::HistAddress(INS ins)
+{
+    ADDRINT pc = INS_Address(ins);
+    UINT8 index = Index(pc);
+    return &(_branchHistory[index]);
+}
+
+BOOL BIMODAL::Predict(INT8 history)
+{
+    if (history >=2) return true; // Predict 'taken'
+    if (history <= 1 ) return false; // Predict 'not taken'
+    ASSERT(false, "Invalid history\n"); 
+    return false;// control should not reach here
+}
+
+VOID BIMODAL::Update(INT8 *history_ptr, BOOL outcome)
+{
+    INT8 delta = 0;
+    INT8 history = (*history_ptr) & 0x3; 
+
+    if (outcome && (history < 3))
+    {
+        delta = 1; 
+    }
+    if (!outcome && (history > 0))
+    {
+        delta = -1;
+    }
+  
+    *history_ptr += delta;
+}
+
+VOID BIMODAL::CondBranch(VOID *v, VOID * v2, BOOL outcome)
+{
+    BIMODAL *bm = reinterpret_cast<BIMODAL*>(v);
+    INT8  *branchHistory = reinterpret_cast<INT8*>(v2);
+    INT8 history;
+
+    bm->_references += 1; // Count of conditional instructions
+
+    history = (*branchHistory) & 0x3; // Mask out the 2 LSBs (as you can't have less than 8 bit integers)
+
+    if((outcome && Predict(history)) || (!outcome && !Predict(history)))
+        bm->_predicts += 1;
+    
+    Update(branchHistory, outcome);
+}
+
+VOID BIMODAL::PrintStats(int n, VOID *v)
+{
+    BIMODAL *bm = reinterpret_cast<BIMODAL*>(v);
+    *(bm->_outfile) << endl;
+    *(bm->_outfile) << "Icount: " << dec << bm->Icount() << " Mispredicts: " << dec << bm->Mispredicts() << " MPKI: " << fixed << ((double)bm->Mispredicts()*1000)/(double)bm->Icount() << endl;
+    *(bm->_outfile) << "References: " << dec << bm->References() << " Predicts: " << dec << bm->Predicts() << endl;
+}
+
+VOID BIMODAL::Count(VOID *v)
+{
+    BIMODAL *bm = reinterpret_cast<BIMODAL*>(v);
+    bm->_icount++;
+}
