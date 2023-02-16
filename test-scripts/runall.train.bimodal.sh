@@ -2,7 +2,7 @@
 export PATH=`pwd`/scripts:$PATH # must be run from the root of the train harness with scripts directory
 export PIN_ROOT="/projectnb/ec513/students/ffayza/PIN/pin-3.26-98690-g1fc9d60e6-gcc-linux" #CHANGEME to your pin kit directory
 export PINTOOL="/projectnb/ec513/students/ffayza/PIN/pintool_bimodal/obj-intel64/branch-predictor.so" #CHANGEME to your built pintool (so file)
-export OUT_DIR="/projectnb/ec513/students/ffayza/PIN/results/" #CHANGEME to your desired output directory
+export OUT_DIR="/projectnb/ec513/students/ffayza/PIN/results" #CHANGEME to your desired output directory
 
 module load gcc/12.2.0
 gcc --version
