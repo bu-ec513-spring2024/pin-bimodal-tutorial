@@ -2,7 +2,7 @@
 export PATH=`pwd`/scripts:$PATH # must be run from the root of the train harness with scripts directory
 export PIN_ROOT="/projectnb/ec513/students/ffayza/PIN/pin-3.26-98690-g1fc9d60e6-gcc-linux" #CHANGEME to your pin kit directory
 export PINTOOL="/projectnb/ec513/students/ffayza/PIN/pintool_bimodal/obj-intel64/branch-predictor.so" #CHANGEME to your built pintool (so file)
-export OUT_DIR="/projectnb/ec513/students/ffayza/PIN/pintool_tutorial/qsubresults/" #CHANGEME to your desired output directory
+export OUT_DIR="/projectnb/ec513/students/ffayza/PIN/pintool_tutorial/qsubresults" #CHANGEME to your desired output directory
 
 
 if  [ ! -e $PIN_ROOT ]; then
@@ -36,8 +36,8 @@ do
     	  echo "time (./run.$b.$i.sh) >> $OUT_DIR/$bm.$i.time.out 2>&1"  >> run.$bm.$i.qsub.sh
     	  echo "echo >> $bm.$i.time.out 2>&1 # empty line as a separator"  >> run.$bm.$i.qsub.sh
 #PINTOOL run
-    	  echo "export PREFIX=\"\$PIN_ROOT/pin -t \$PINTOOL  -statfile $bm.$i.bimodal.out  -- \"" >> run.$bm.$i.qsub.sh
-        echo "echo \"PREFIX=\$PREFIX\" >> $bm.$i.time.out" >> run.$bm.$i.qsub.sh
+    	  echo "export PREFIX=\"\$PIN_ROOT/pin -t \$PINTOOL  -statfile \$OUT_DIR/$bm.$i.bimodal.out  -- \"" >> run.$bm.$i.qsub.sh
+        echo "echo \"PREFIX=\$PREFIX\" >> $OUT_DIR/$bm.$i.time.out" >> run.$bm.$i.qsub.sh
     	  echo "time (./run.$b.$i.sh) >> $OUT_DIR/$bm.$i.time.out 2>&1"  >> run.$bm.$i.qsub.sh
         chmod +x  run.$bm.$i.qsub.sh
         qsub run.$bm.$i.qsub.sh
