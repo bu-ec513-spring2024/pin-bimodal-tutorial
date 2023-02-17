@@ -24,7 +24,7 @@ do
   while [ $i -le $n ]; 
   do
     if [ -e base.exe ]; then
-      if [ ! -e $bm.$i.bimodal.out ]; then
+      if [ ! -e $OUT_DIR/$bm.$i.bimodal.out ]; then # if not already generated (clean your OUT_DIR before generating new results)
         echo "#!/bin/bash -l" > run.$bm.$i.qsub.sh
         echo "PIN_ROOT=$PIN_ROOT" >> run.$bm.$i.qsub.sh
         echo "PINTOOL=$PINTOOL" >> run.$bm.$i.qsub.sh

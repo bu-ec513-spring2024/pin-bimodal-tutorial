@@ -23,22 +23,22 @@ do
   bm=`echo $b | awk -F"." '{print $2}'`
   n=`specratetrain_numinputs.sh $b`  # 'train' used here "specratetrain_numinputs.sh"
   let i=1
-  while [ $i -le $n ]; 
+  while [ $i -le $n ]; # for all the inputs
   do
     if [ -e base.exe ]; then
-      if [ ! -e ../results/$bm.$i.bimodal.out ]; then
+      if [ ! -e $OUT_DIR/$bm.$i.bimodal.out ]; then # if not already generated (clean your OUT_DIR before generating new results)
 		echo "$bm.$i"
     	  ulimit -s unlimited
 		  touch $OUT_DIR/$bm.$i.time.out
 #native run
     	  export PREFIX=""
         echo "PREFIX=$PREFIX" > $OUT_DIR/$bm.$i.time.out
-    	  time (./run.$b.$i.sh) >> $OUT_DIR/$bm.$i.time.out 2>&1
+    	  time (./run.$b.$i.sh) >> $OUT_DIR/$bm.$i.time.out 2>&1 # run the benchmark and capture runtime
     	  echo >> $bm.$i.time.out 2>&1 # empty line as a separator
 #PINTOOL run
     	  export PREFIX="$PIN_ROOT/pin -t $PINTOOL  -statfile $OUT_DIR/$bm.$i.bimodal.out  -- "
         echo "PREFIX=$PREFIX" >> $OUT_DIR/$bm.$i.time.out
-    	  time (./run.$b.$i.sh) >> $OUT_DIR/$bm.$i.time.out 2>&1
+    	  time (./run.$b.$i.sh) >> $OUT_DIR/$bm.$i.time.out 2>&1 # run the pintool on the benchmark and capture runtime
       fi
     fi
     let i=i+1
